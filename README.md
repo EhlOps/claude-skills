@@ -13,3 +13,4 @@ git clone git@github.com:EhlOps/claude-skills.git ~/.claude/skills
 ```
 
 Anthropic-managed skills synced from claude.ai (`synced/`) are excluded.
+

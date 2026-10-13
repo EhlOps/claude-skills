@@ -2,7 +2,7 @@
 
 ## Defaults
 
-- Canvas base URL: `EXPRESS_SERVER_URL` (default `http://127.0.0.1:3000`); CLI also accepts `--url <canvasUrl>`
+- Canvas base URL: `https://draw.ehlops.com`. Pass `--url https://draw.ehlops.com` or set `EXPRESS_SERVER_URL` (the CLI's own default, `http://127.0.0.1:3000`, is a private local canvas)
 - Canvas health: `GET /health` or `npx -y mcp-excalidraw-server status`
 - Auto-start: any canvas-touching CLI command starts the server if it's down (opt out with `EXCALIDRAW_NO_AUTOSTART=1`)
 

@@ -1,6 +1,6 @@
 ---
 name: excalidraw-skill
-description: Excalidraw canvas toolkit for creating, editing, and refining diagrams on a live canvas. Use when an agent needs to (1) draw or lay out diagrams, (2) iteratively refine them by describing the scene and screenshotting its own work, (3) export/import .excalidraw files or PNG/SVG images, (4) save/restore canvas snapshots, (5) convert Mermaid to Excalidraw, or (6) perform element-level CRUD, alignment, distribution, grouping, duplication, and locking. Primary interface is the bundled CLI (npx -y mcp-excalidraw-server <command>) which auto-starts the canvas server; MCP tools and a REST API are equivalent alternatives.
+description: Excalidraw canvas toolkit for creating, editing, and refining diagrams on a live canvas. Use when an agent needs to (1) draw or lay out diagrams, (2) iteratively refine them by describing the scene and screenshotting its own work, (3) export/import .excalidraw files or PNG/SVG images, (4) save/restore canvas snapshots, (5) convert Mermaid to Excalidraw, or (6) perform element-level CRUD, alignment, distribution, grouping, duplication, and locking. The canvas is hosted at https://draw.ehlops.com. Primary interface is the bundled CLI (npx -y mcp-excalidraw-server --url https://draw.ehlops.com COMMAND); MCP tools and a REST API are equivalent alternatives.
 ---
 
 # Excalidraw Skill
@@ -14,10 +14,10 @@ Three interfaces drive the same live canvas. Pick the first one that applies:
    ```bash
    npx -y mcp-excalidraw-server <command>
    ```
-   No setup needed — any canvas-touching command **auto-starts the canvas server** on `http://127.0.0.1:3000` (first `npx` run downloads the package). If the CLI is installed globally (`npm i -g mcp-excalidraw-server`), the shorter alias `excalidraw-canvas <command>` works too.
-3. **REST API** (last resort, e.g. from application code): HTTP endpoints on `http://127.0.0.1:3000` — see `references/cheatsheet.md` for payloads. The server must already be running.
+   The canvas is hosted at **https://draw.ehlops.com**, so always pass `--url https://draw.ehlops.com` (or set `EXPRESS_SERVER_URL=https://draw.ehlops.com`). Without it the CLI auto-starts a private local server on `127.0.0.1:3000` that the user can't see. The first `npx` run downloads the package. If the CLI is installed globally (`npm i -g mcp-excalidraw-server`), the shorter alias `excalidraw-canvas <command>` works too.
+3. **REST API** (last resort, e.g. from application code): HTTP endpoints on `https://draw.ehlops.com` — see `references/cheatsheet.md` for payloads. The server must already be running.
 
-The canvas URL comes from `EXPRESS_SERVER_URL` (default `http://127.0.0.1:3000`). Screenshots and image exports render headless inside the canvas server, so you never need a browser tab to check your own work. Only mermaid conversion and viewport control need an open tab (CLI exits with code 4 when it's missing). Still tell the user the URL — opening it lets them watch you draw.
+The canvas URL comes from `--url` or `EXPRESS_SERVER_URL`. Use `https://draw.ehlops.com`; the CLI's built-in default of `http://127.0.0.1:3000` is a private local canvas. Screenshots and image exports render headless inside the canvas server, so you never need a browser tab to check your own work. Only mermaid conversion and viewport control need an open tab (CLI exits with code 4 when it's missing). Still give the user https://draw.ehlops.com (never a localhost link), since opening it lets them watch you draw. It has no authentication, so keep secrets off the canvas.
 
 ### CLI Quick Reference
 
@@ -262,8 +262,8 @@ Round-trips are safe: text-element block references follow the plugin's own id r
 
 ## Error Recovery
 
-- **Exit code 3 (canvas unreachable)?** Auto-start is disabled (`EXCALIDRAW_NO_AUTOSTART=1`) or a non-loopback `EXPRESS_SERVER_URL` is set. Run `start` explicitly or fix the env.
-- **Exit code 4 (browser required)?** Only `mermaid` and `screenshot --renderer browser` need an open tab. Open `http://127.0.0.1:3000` in a browser and retry, or drop `--renderer browser` — screenshots and image exports render headless.
+- **Exit code 3 (canvas unreachable)?** https://draw.ehlops.com isn't reachable (auto-start doesn't apply to a remote URL). Check `$X status` and tell the user the canvas looks down rather than switching to a local one.
+- **Exit code 4 (browser required)?** Only `mermaid` and `screenshot --renderer browser` need an open tab. Ask the user to open https://draw.ehlops.com in a browser and retry, or drop `--renderer browser` — screenshots and image exports render headless.
 - **Elements not appearing?** Check `describe` — they may be off-screen. In MCP mode, use `set_viewport` with `scrollToContent: true`, or `scrollToElementIds` plus optional `viewportZoomFactor` to focus on a specific subgraph; in a browser, press the zoom-to-fit button.
 - **Arrow not connecting?** Verify element IDs with `get <id>`. Make sure `startElementId`/`endElementId` match existing element IDs.
 - **Canvas in a bad state?** `snapshot save` first, then `clear --yes` and rebuild. Or `snapshot restore` to go back.

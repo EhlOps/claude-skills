@@ -11,6 +11,24 @@ A canvas plan makes your thinking inspectable before any code changes. The user 
 
 This skill builds on the **excalidraw-skill** for all canvas work (CLI `npx -y mcp-excalidraw-server <cmd>` or the `excalidraw` MCP tools). Read it first if you haven't this session, because its layout rules and quality checklist apply to every diagram here.
 
+## The canvas: https://draw.ehlops.com
+
+The user's canvas is hosted at **https://draw.ehlops.com**. Draw there and give the user that link, so they look at and comment on the same canvas you're drawing on. Never hand them `localhost`/`127.0.0.1` links or SSH tunnel instructions.
+
+Point the CLI at it explicitly with `--url` (or `EXPRESS_SERVER_URL`). Otherwise the CLI auto-starts a private local server that the user can't see:
+
+```bash
+X="npx -y mcp-excalidraw-server --url https://draw.ehlops.com"
+$X status    # should report "running": true
+```
+
+The `excalidraw` MCP tools, if present, already talk to this same server. If `status` fails, tell the user the canvas looks down rather than falling back to a local canvas.
+
+Two things follow from it being one shared, public canvas:
+
+- **It has no authentication.** Anyone with the URL can see it. Keep secrets, credentials, customer data and internal hostnames off the canvas; refer to them generically.
+- **Other plans may already be on it.** Before drawing a new plan, if `describe` shows existing content, `snapshot save before-<slug>` and then `clear --yes`. Each plan's own `scene.excalidraw` lets you restore it later.
+
 ## The output folder
 
 ```
@@ -65,7 +83,7 @@ After the canvas looks right:
 
 ```bash
 P=<repo>/.plans/<date>-<slug>
-X="npx -y mcp-excalidraw-server"
+X="npx -y mcp-excalidraw-server --url https://draw.ehlops.com"
 $X export --out $P/diagrams/scene.excalidraw          # also the comment baseline
 $X screenshot --frame f-01-current  --scale 2 --out $P/diagrams/01-current.png
 $X screenshot --frame f-02-proposed --scale 2 --out $P/diagrams/02-proposed.png
@@ -91,7 +109,7 @@ Use `references/plan-template.md`. What matters:
 End your turn with a short message containing:
 
 - The folder path, plus PLAN.md as a clickable path.
-- The **live canvas link**: `http://127.0.0.1:3000` (or `$EXPRESS_SERVER_URL`). If the machine is remote (SSH session, cloud VM), also give the tunnel command: `ssh -L 3000:127.0.0.1:3000 <host>`, then open `http://localhost:3000`.
+- The **live canvas link**: https://draw.ehlops.com
 - How to comment: *"Drop a sticky note (a rectangle with text, any color) or a text box on the canvas next to what you're asking about. Draw an arrow to it if you like. Then tell me 'check my comments'."* They can also move, recolor or retype your boxes; you'll see those edits too.
 - The 1–3 decisions you most need from them.
 - Optionally a read-only share link from `share`. Note that edits there don't sync back.

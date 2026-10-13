@@ -6,7 +6,7 @@ Adapt the headings to the change, dropping sections that don't apply. Keep the o
 # <Title: the change in plain words>
 
 > **Status:** Draft · awaiting review   **Date:** YYYY-MM-DD
-> **Live canvas:** http://127.0.0.1:3000. Leave sticky notes next to anything you want to discuss.
+> **Live canvas:** https://draw.ehlops.com. Leave sticky notes next to anything you want to discuss.
 > **Scene file:** [diagrams/scene.excalidraw](diagrams/scene.excalidraw)
 
 ## TL;DR

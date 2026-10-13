@@ -19,6 +19,44 @@ Three interfaces drive the same live canvas. Pick the first one that applies:
 
 The canvas URL comes from `--url` or `EXPRESS_SERVER_URL`. Use `https://draw.ehlops.com`; the CLI's built-in default of `http://127.0.0.1:3000` is a private local canvas. Screenshots and image exports render headless inside the canvas server, so you never need a browser tab to check your own work. Only mermaid conversion and viewport control need an open tab (CLI exits with code 4 when it's missing). Still give the user https://draw.ehlops.com (never a localhost link), since opening it lets them watch you draw. It has no authentication, so keep secrets off the canvas.
 
+### MCP Connection
+
+The MCP server is the same package run with no command (`npx -y mcp-excalidraw-server`). It talks stdio to the client, and to the canvas over `EXPRESS_SERVER_URL`. Unless that variable is set to `https://draw.ehlops.com`, the MCP tools draw on a private local canvas, even though they show up in your tool list as if everything were fine.
+
+**Connecting it** (when the user asks you to set it up, or the tools are missing and they want them):
+
+- **Claude Code** (any machine):
+  ```bash
+  claude mcp add excalidraw -s user \
+    -e EXPRESS_SERVER_URL=https://draw.ehlops.com -e ENABLE_CANVAS_SYNC=true \
+    -- npx -y mcp-excalidraw-server
+  ```
+- **Claude Desktop**: add this to `claude_desktop_config.json` (macOS `~/Library/Application Support/Claude/`, Windows `%APPDATA%\Claude\`), then restart the app:
+  ```json
+  {
+    "mcpServers": {
+      "excalidraw": {
+        "command": "npx",
+        "args": ["-y", "mcp-excalidraw-server"],
+        "env": { "EXPRESS_SERVER_URL": "https://draw.ehlops.com", "ENABLE_CANVAS_SYNC": "true" }
+      }
+    }
+  }
+  ```
+- **On the canvas host itself** (the server behind draw.ehlops.com), the compose setup reaches the same canvas over the internal network: `claude mcp add excalidraw -- docker compose -f /home/opc/excalidraw/docker-compose.yml run --rm -T mcp`.
+
+Both client setups need Node/npx on that machine. Changing MCP config affects every session, so show the user the command and get their OK before running it. New tools appear after the client restarts (in Claude Code, `/mcp` shows connection status).
+
+**Verify the connection before trusting it.** The tool list can't tell you which canvas the tools reach. Create a marker with the MCP tools, then look for it with the CLI against draw.ehlops.com:
+
+```bash
+# 1. MCP: create_element {"id": "mcp-ping", "type": "text", "x": -9999, "y": -9999, "text": "ping"}
+npx -y mcp-excalidraw-server --url https://draw.ehlops.com get mcp-ping   # 2. found => same canvas
+# 3. MCP: delete_element mcp-ping
+```
+
+If the CLI can't find the marker, the MCP server is pointed elsewhere. Delete the marker through MCP, use the CLI for this session, and tell the user their MCP config needs `EXPRESS_SERVER_URL=https://draw.ehlops.com`.
+
 ### CLI Quick Reference
 
 Results are JSON on stdout — except `describe` (plain text) and raw-content output when `--out` is omitted (`export` scene JSON, `screenshot --format svg`). Diagnostics on stderr. Exit codes: 0 ok, 1 error, 2 usage, 3 canvas unreachable, 4 browser tab required (only `mermaid` and `screenshot --renderer browser`).

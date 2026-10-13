@@ -22,7 +22,9 @@ X="npx -y mcp-excalidraw-server --url https://draw.ehlops.com"
 $X status    # should report "running": true
 ```
 
-The `excalidraw` MCP tools, if present, already talk to this same server. If `status` fails, tell the user the canvas looks down rather than falling back to a local canvas.
+If `status` fails, tell the user the canvas looks down rather than falling back to a local canvas.
+
+**MCP tools.** If `excalidraw` MCP tools are in your tool list, use them only after confirming they reach draw.ehlops.com. Run the marker check in the excalidraw-skill's "MCP Connection" section: create an element via MCP, then `$X get` it. An MCP server set up without `EXPRESS_SERVER_URL=https://draw.ehlops.com` silently draws on a local canvas the user never sees, so their comments would never reach you. If the check fails, or there are no MCP tools, use the CLI with `--url`. It works everywhere. If the user wants the MCP tools, show them the setup command from that section, adjusted for their client.
 
 Two things follow from it being one shared, public canvas:
 

@@ -38,6 +38,7 @@ Two things follow from it being one shared, public canvas:
 ├── PLAN.md                 # the document; template in references/plan-template.md
 ├── diagrams/
 │   ├── scene.excalidraw    # full canvas: the baseline used to detect user comments
+│   ├── 00-overview.png     # the whole canvas in one image (every frame, plus any user notes)
 │   ├── 01-current.png      # one PNG per frame, numbered in reading order
 │   ├── 02-proposed.png
 │   ├── 03-alt-<name>.png
@@ -87,11 +88,14 @@ After the canvas looks right:
 P=<repo>/.plans/<date>-<slug>
 X="npx -y mcp-excalidraw-server --url https://draw.ehlops.com"
 $X export --out $P/diagrams/scene.excalidraw          # also the comment baseline
+$X screenshot --scale 1 --out $P/diagrams/00-overview.png   # whole canvas, every frame
 $X screenshot --frame f-01-current  --scale 2 --out $P/diagrams/01-current.png
 $X screenshot --frame f-02-proposed --scale 2 --out $P/diagrams/02-proposed.png
 # ...one per frame
 $X snapshot save canvas-plan-<slug>
 ```
+
+**Screenshots are part of the plan, not an optional extra.** Every frame gets a PNG, and the whole canvas gets `00-overview.png`, so the plan reads fully without opening the canvas. Look at each PNG (Read it) before embedding it. The headless renderer is what the reader sees, so fix anything it shows as clipped or as tofu boxes. Excalifont lacks some glyphs, like `→` and `✗`; use ASCII (`->`, `X`) in canvas text. Use `--scale 1` for the overview, since it's wide, and `--scale 2` for frames.
 
 Put real code in `examples/` when it sharpens the plan: the current function you're changing, a sketch of the new interface, a sample config or payload. Name files descriptively (`examples/current-refresh-logic.ts`, `examples/proposed-TokenStore-interface.ts`) and keep excerpts focused. In excerpts, put the source path and line range as a comment at the top.
 
@@ -99,7 +103,12 @@ Put real code in `examples/` when it sharpens the plan: the current function you
 
 Use `references/plan-template.md`. What matters:
 
-- **Visual first.** Every major section opens with its diagram (`![Proposed](diagrams/02-proposed.png)`) and then a few lines of commentary. If a section has no picture, ask whether it needs one.
+- **Visual first.** Put the overview screenshot (`![Canvas overview](diagrams/00-overview.png)`) right under the header, then open every major section with its frame's screenshot (`![Proposed](diagrams/02-proposed.png)`) and a few lines of commentary. If a section has no picture, ask whether it needs one.
+- **Every screenshot is embedded.** Before handing over, check that each PNG in `diagrams/` is referenced in PLAN.md and each reference points at a file that exists:
+  ```bash
+  cd $P && for f in diagrams/*.png; do grep -q "]($f)" PLAN.md || echo "not embedded: $f"; done
+  grep -o '](diagrams/[^)]*)' PLAN.md | tr -d '()]' | while read f; do [ -f "$f" ] || echo "missing: $f"; done
+  ```
 - **Alternatives considered** are first-class. For each one give its diagram, what it is in a sentence, pros, cons, and the specific reason it lost. Include "do nothing" when that's a real option. Show the comparison as a table across the criteria that actually decided it.
 - **FAQ.** Anticipate what a skeptical reviewer would ask: "why not X?", "what happens when Y fails?", "does this break Z?", "how do we roll back?", "how big is this?". Write 5–10 real questions with direct answers, not filler.
 - **Ground claims in code.** Cite `path/to/file.ts:42` when you say something about current behavior.
@@ -118,6 +127,28 @@ End your turn with a short message containing:
 
 Don't start implementing. The plan exists so the user can redirect you cheaply.
 
+### Publishing the plan as an issue, PR or doc
+
+When the user asks for the plan as a GitHub issue, a PR description or anything else outside the repo, **keep the screenshots in it**. Never drop the image lines because the relative `diagrams/…` paths won't resolve there. Host the PNGs and rewrite the links:
+
+1. Push the PNGs to an asset branch (default `canvas-plans`, one folder per plan slug). This publishes them, so get the user's OK the first time for that repo. Say plainly when the repo is public, because anyone will be able to see the images. Use a temporary worktree so the user's checkout and branch are left alone:
+   ```bash
+   R=$(git rev-parse --show-toplevel); S=$(basename $P); WT=$(mktemp -d)
+   if git fetch -q origin canvas-plans 2>/dev/null; then git worktree add -q --detach $WT origin/canvas-plans
+   else git worktree add -q --detach $WT && git -C $WT checkout -q --orphan canvas-plans-tmp && git -C $WT rm -rqf .; fi
+   mkdir -p $WT/$S && cp $P/diagrams/*.png $WT/$S/
+   git -C $WT add $S && git -C $WT commit -qm "canvas-plan images: $S"; git -C $WT push -q origin HEAD:refs/heads/canvas-plans
+   git worktree remove --force $WT
+   ```
+2. Rewrite the image links into the body. For a public repo use `https://raw.githubusercontent.com/<owner>/<repo>/canvas-plans/<slug>/<file>.png`. For a private repo use `https://github.com/<owner>/<repo>/blob/canvas-plans/<slug>/<file>.png?raw=true`, which renders for anyone with access:
+   ```bash
+   sed "s#](diagrams/\([^)]*\.png\))#]($BASE/\1)#g" $P/PLAN.md > /tmp/issue-body.md
+   ```
+   Then link the live canvas at the top of the body, drop the local-only sections (Artifacts, the empty Feedback log), and create the issue with `gh issue create --body-file`.
+3. Images link to the branch, not to a commit, so re-pushing after a round of feedback updates the issue's pictures in place. Say so in the hand-over.
+
+If pushing isn't allowed or wanted, create the issue without images and tell the user exactly which screenshots are missing. Don't quietly ship a picture-less plan.
+
 ## Reading and answering comments
 
 When the user says they've commented (or asks you to check the canvas):
@@ -129,7 +160,7 @@ When the user says they've commented (or asks you to check the canvas):
    ```
    The script lists new elements (with their text, frame, and what they point at or sit nearest) and any of your elements the user edited, moved or deleted. Screenshot the affected frames as well, because placement sometimes carries meaning the script can't capture.
 2. Answer each comment **on the canvas**: a text element right beside it, in blue (`#1971c2`), starting with `↳`. Keep it to one or two lines and point to PLAN.md for anything longer. Don't delete or move the user's notes.
-3. If a comment changes the plan, update the diagrams, re-export the PNGs, and update PLAN.md. Record it in PLAN.md's **Feedback log**: the comment, your response, and what changed.
+3. Re-take `00-overview.png` and the screenshots of every frame you or the user touched, so the PNGs in the plan show their notes and your replies. If the plan was published as an issue or PR, re-push the PNGs to the asset branch as well. If a comment changes the plan, update the diagrams, re-export the PNGs, and update PLAN.md. Record it in PLAN.md's **Feedback log**: the comment, your response, and what changed.
 4. Re-export `scene.excalidraw` so the new baseline includes their notes and your replies, and the next diff only shows fresh comments.
 5. Summarize in chat what you changed and what still needs their decision.
 

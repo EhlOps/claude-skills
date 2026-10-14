@@ -9,6 +9,8 @@ Adapt the headings to the change, dropping sections that don't apply. Keep the o
 > **Live canvas:** https://draw.ehlops.com. Leave sticky notes next to anything you want to discuss.
 > **Scene file:** [diagrams/scene.excalidraw](diagrams/scene.excalidraw)
 
+![Canvas overview](diagrams/00-overview.png)
+
 ## TL;DR
 Three to five bullets: the problem, the proposal, the main tradeoff, and what you need from the reviewer.
 
@@ -67,7 +69,7 @@ Direct answer.
 - …
 
 ## Artifacts
-- `diagrams/` holds the canvas scene and one PNG per frame
+- `diagrams/` holds the canvas scene, `00-overview.png` (the whole canvas) and one PNG per frame, each embedded above
 - `examples/` holds code excerpts and sample data (list each with a one-line description)
 - `media/` holds renders and recordings (only when present)
 

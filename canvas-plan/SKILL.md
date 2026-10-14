@@ -1,13 +1,22 @@
 ---
 name: canvas-plan
-description: Plan a code change visually. Produces a plan folder (.plans/DATE-SLUG/ at the repo root) holding a PLAN.md (design, alternatives considered, FAQ, risks, steps), Excalidraw diagrams of how the code relates, screenshots, example files, and any other media, plus a link to the live canvas at https://draw.ehlops.com where the user leaves sticky-note comments that the agent reads back and answers. Use this whenever the user wants a plan, design doc, RFC, proposal, architecture sketch or "show me how you'd approach this" before code is written, wants to see what the agent is thinking, asks to map or diagram how parts of a codebase relate, or says "canvas plan", even when they don't mention Excalidraw or diagrams. Also use it when the user says they've left comments on the canvas or plan.
+description: Plan a code change visually. Produces a plan folder (.plans/DATE-SLUG/ at the repo root) holding a PLAN.md (design, reasoning, alternatives considered, FAQ, risks, steps) with embedded screenshots of every canvas frame, required Excalidraw diagrams (C4 context/container/component, a sequence diagram, a flowchart), example files, and any other media, plus a link to the live canvas at https://draw.ehlops.com where the user leaves sticky-note comments that the agent reads back and answers. Use this whenever the user wants a plan, design doc, RFC, proposal, architecture sketch or "show me how you'd approach this" before code is written, wants to see what the agent is thinking, asks to map or diagram how parts of a codebase relate, or says "canvas plan", even when they don't mention Excalidraw or diagrams. Also use it when the user says they've left comments on the canvas or plan.
 ---
 
 # Canvas Plan
 
 A canvas plan makes your thinking inspectable before any code changes. The user should be able to open one folder and understand what you found, what you propose, what else you considered, and why, mostly by *looking*, then push back by dropping sticky notes on the live canvas.
 
-**Lean hard on Excalidraw.** The diagrams carry the explanation and the markdown supports them. Prose is for reasoning a picture can't hold: tradeoffs, the "why", the FAQ. When you're about to write a paragraph describing structure, flow, ownership, ordering or before/after, draw it instead and write one sentence pointing at it.
+**Diagrams show, the document argues.** Excalidraw carries *what*: structure, ownership, interactions, ordering, before/after. When you're about to write a paragraph describing any of those, draw it instead and write one sentence pointing at it. PLAN.md carries *why*: the reasoning, the tradeoffs, the alternatives and why they lost, the FAQ. That reasoning never goes on the canvas. Canvas text is limited to names, short labels and short facts (`hot path, ~2k rps`), because reasoning in a screenshot can't be reviewed line by line and goes stale without anyone noticing. `scripts/check_plan.py` enforces this.
+
+**Every plan has these, no exceptions:**
+- **Screenshots** of every frame plus the whole canvas, embedded in PLAN.md
+- **C4 diagrams**: System Context (L1), Container (L2), and Component (L3) for both current and proposed
+- **A sequence diagram** of the key interaction
+- **A flowchart** of the control or decision logic
+- **Alternatives considered** in PLAN.md, each with its reasoning
+
+If a required view seems trivial for this change, draw it anyway, keep it small, and say in one line of PLAN.md why it's simple. A two-box Context diagram still orients the reader.
 
 This skill builds on the **excalidraw-skill** for all canvas work (CLI `npx -y mcp-excalidraw-server <cmd>` or the `excalidraw` MCP tools). Read it first if you haven't this session, because its layout rules and quality checklist apply to every diagram here.
 
@@ -39,9 +48,13 @@ Two things follow from it being one shared, public canvas:
 ├── diagrams/
 │   ├── scene.excalidraw    # full canvas: the baseline used to detect user comments
 │   ├── 00-overview.png     # the whole canvas in one image (every frame, plus any user notes)
-│   ├── 01-current.png      # one PNG per frame, numbered in reading order
-│   ├── 02-proposed.png
-│   ├── 03-alt-<name>.png
+│   ├── 01-c4-context.png   # one PNG per frame, named after the frame id, in reading order
+│   ├── 02-c4-container.png
+│   ├── 03-current.png      # C4 component, today
+│   ├── 04-proposed.png     # C4 component, after
+│   ├── 05-sequence.png
+│   ├── 06-flow.png
+│   ├── 07-alt-<name>.png   # optional
 │   └── ...
 ├── examples/               # real code excerpts, sample inputs/outputs, before/after snippets, API shapes
 └── media/                  # only when something warrants it: renders, recordings, profiler output, UI captures
@@ -62,23 +75,36 @@ If the request is too vague to plan (you can't tell what's in scope), ask one or
 
 ### 2. Draw the canvas, one frame per view
 
-Put every view on **one canvas**, each in its own Excalidraw `frame` with a clear name. Lay frames out left to right in reading order with about 200px gaps so the user can pan through them like slides. Use frame ids `f-01-current`, `f-02-proposed`, … and give elements inside a frame matching prefixes (`cur-`, `new-`, `altA-`) so ids stay unique and readable.
+Put every view on **one canvas**, each in its own Excalidraw `frame` with a clear name. Lay frames out left to right in reading order with about 200px gaps so the user can pan through them like slides. Frame names are titles the reader sees (`C4 L2: Containers`), and frame ids follow the scheme below.
 
-Pick the views that fit the change. Usually:
+Frame ids are `f-NN-<kind>`, and the PNG for each is `diagrams/NN-<kind>.png`. The checker finds frames by kind, so keep the kind names exact.
 
-| Frame | What it shows |
-|-------|---------------|
-| **Current** | How the relevant code is wired today: modules/files as boxes, calls/imports/data flow as arrows. Label boxes with real names (`auth/session.ts`, `TokenStore`). |
-| **Proposed** | The same view after the change. Color what's new (green), changed (yellow) and removed (red, dashed) so the delta is visible at a glance. Add a small legend. |
-| **Alternative(s)** | One frame per serious alternative, drawn at the same zoom as Proposed so they compare side by side. Usually 1–3 alternatives. |
-| **Flow / sequence** | When ordering matters (request lifecycle, migration steps, retries), a numbered left-to-right or top-down flow. |
-| **Rollout / steps** | For multi-step changes, the implementation order as a chain of boxes that matches the steps in PLAN.md. |
+**Required frames**, in this reading order:
 
-Add others when they earn their place: data model, state machine, dependency graph, failure modes. Skip a view rather than draw a trivial one.
+| Frame id | What it shows |
+|----------|---------------|
+| `f-01-c4-context` | **C4 System Context (L1).** The system being changed as one box, the people who use it, and the external systems it talks to. Mark the part this change touches. |
+| `f-02-c4-container` | **C4 Container (L2).** The deployable or runnable units inside the system (apps, services, databases, queues, workers) and how they communicate. Highlight the container(s) the change lives in. |
+| `f-03-current` | **C4 Component (L3), today.** The components inside the affected container as they are wired now: modules, classes and files as boxes, labeled with real names (`auth/session.ts`, `TokenStore`); calls, imports and data flow as arrows. |
+| `f-04-proposed` | **C4 Component (L3), after the change.** The same view at the same zoom. Color what's new (green), changed (yellow) and removed (red, dashed), and add a small legend. |
+| `f-05-sequence` | **Sequence diagram** of the key interaction after the change. Participants as boxes along the top, dashed vertical lifelines, numbered horizontal message arrows in time order, dashed return arrows, and failure or retry paths as labeled alternate blocks. If the interaction itself changes, add `f-05-sequence-current` before it. |
+| `f-06-flow` | **Flowchart** of the control or decision logic: ellipse for start and end, rectangles for steps, diamonds for decisions with every branch labeled (`yes`/`no`, `token expired?`), arrows for flow. This covers the logic the change introduces or alters, for example request handling, a migration, or a retry policy. |
+
+**C4 notation.** In each C4 box, put the name, a type tag (`[Person]`, `[Software System]`, `[Container: Node/Express]`, `[Component: TS class]`) and a description of *what it is*, at most about ten words. Label each relationship arrow with a verb and, where relevant, the protocol (`reads tokens from [SQL]`). Use a consistent style: people as rounded shapes, external systems in grey, the system in scope in blue. Each C4 frame gets a one-line title naming its level and scope.
+
+**Optional frames**, added after the required ones:
+
+| Frame id | What it shows |
+|----------|---------------|
+| `f-NN-alt-<name>` | One per serious alternative (usually 1–3), at the same zoom as Proposed so they compare side by side. The frame shows only the **shape** of the alternative. Its pros and cons, the reason it lost, and the comparison table all go in PLAN.md. |
+| `f-NN-steps` | For multi-step changes, the implementation order as a chain of boxes matching the steps in PLAN.md. |
+| `f-NN-<kind>` | Anything else that earns its place: data model, state machine, dependency graph, failure modes. |
+
+Draw sequence diagrams and flowcharts directly with elements rather than through `mermaid`. Mermaid conversion needs an open browser tab and doesn't place its output inside a frame. Give elements inside a frame id prefixes that match it (`ctx-`, `ctr-`, `cur-`, `new-`, `seq-`, `flow-`, `alt-<name>-`) so ids stay unique and readable. Keep agent ids lowercase and dashed; the checker uses that to tell your text apart from the user's notes.
 
 Follow the excalidraw-skill quality loop on **every** frame: draw, screenshot that frame (`screenshot --frame <id>`), check for truncation, overlap and arrow crossings, fix, re-check. Messy diagrams undermine trust in the plan.
 
-Small annotations on the canvas help: a free-standing text note beside a box ("hot path, ~2k rps") or a "?" note marking an open question. Keep them short, since the reasoning itself goes in PLAN.md.
+Small annotations on the canvas help: a free-standing fact beside a box ("hot path, ~2k rps") or a "?" marking an open question. **No reasoning on the canvas.** Keep out "because", pros and cons, "why not", tradeoffs, and any text over about 15 words. If a label needs a justification, the justification belongs in PLAN.md under that frame's screenshot.
 
 ### 3. Save the artifacts
 
@@ -89,9 +115,9 @@ P=<repo>/.plans/<date>-<slug>
 X="npx -y mcp-excalidraw-server --url https://draw.ehlops.com"
 $X export --out $P/diagrams/scene.excalidraw          # also the comment baseline
 $X screenshot --scale 1 --out $P/diagrams/00-overview.png   # whole canvas, every frame
-$X screenshot --frame f-01-current  --scale 2 --out $P/diagrams/01-current.png
-$X screenshot --frame f-02-proposed --scale 2 --out $P/diagrams/02-proposed.png
-# ...one per frame
+for f in $(python3 -c "import json,sys; print(*[e['id'] for e in json.load(open(sys.argv[1]))['elements'] if e['type']=='frame' and not e.get('isDeleted')])" $P/diagrams/scene.excalidraw); do
+  $X screenshot --frame $f --scale 2 --out $P/diagrams/${f#f-}.png   # f-01-c4-context -> 01-c4-context.png
+done
 $X snapshot save canvas-plan-<slug>
 ```
 
@@ -103,19 +129,24 @@ Put real code in `examples/` when it sharpens the plan: the current function you
 
 Use `references/plan-template.md`. What matters:
 
-- **Visual first.** Put the overview screenshot (`![Canvas overview](diagrams/00-overview.png)`) right under the header, then open every major section with its frame's screenshot (`![Proposed](diagrams/02-proposed.png)`) and a few lines of commentary. If a section has no picture, ask whether it needs one.
-- **Every screenshot is embedded.** Before handing over, check that each PNG in `diagrams/` is referenced in PLAN.md and each reference points at a file that exists:
-  ```bash
-  cd $P && for f in diagrams/*.png; do grep -q "]($f)" PLAN.md || echo "not embedded: $f"; done
-  grep -o '](diagrams/[^)]*)' PLAN.md | tr -d '()]' | while read f; do [ -f "$f" ] || echo "missing: $f"; done
-  ```
-- **Alternatives considered** are first-class. For each one give its diagram, what it is in a sentence, pros, cons, and the specific reason it lost. Include "do nothing" when that's a real option. Show the comparison as a table across the criteria that actually decided it.
+- **Visual first.** Put the overview screenshot (`![Canvas overview](diagrams/00-overview.png)`) right under the header, then open every major section with its frame's screenshot (`![Proposed](diagrams/04-proposed.png)`), followed by the explanation and reasoning. If a section has no picture, ask whether it needs one.
+- **Every screenshot is embedded**, each under the section it supports: the C4 Context and Container frames under "System context", Current and Proposed under their sections, Sequence and Flow under "Proposed design".
+- **The reasoning lives here.** Under each screenshot, explain what the picture means and why the design is shaped that way. The canvas only labels; this is where you argue.
+- **Alternatives considered** are first-class, and their reasoning is written here, not on the canvas. For each one give its screenshot (if it has a frame), what it is in a sentence, pros, cons, and a `**Why not:**` line with the specific reason it lost. Include "do nothing" when that's a real option. Show the comparison as a table across the criteria that actually decided it.
 - **FAQ.** Anticipate what a skeptical reviewer would ask: "why not X?", "what happens when Y fails?", "does this break Z?", "how do we roll back?", "how big is this?". Write 5–10 real questions with direct answers, not filler.
 - **Ground claims in code.** Cite `path/to/file.ts:42` when you say something about current behavior.
 - **Open questions** you need the user to decide go in their own section. Mark them on the canvas too.
 - Link the live canvas near the top (see below).
 
-### 5. Hand it over
+### 5. Run the checker
+
+```bash
+python3 <this-skill>/scripts/check_plan.py $P
+```
+
+It fails when a required frame (C4 context, C4 container, current, proposed, sequence, flow) is missing, when a frame has no PNG, when a PNG isn't embedded or an embed points nowhere, when an alternative has no `**Why not:**` in PLAN.md, or when your canvas text reads like reasoning. Fix every FAIL, re-export and re-screenshot, and run it again. Don't hand over a plan that fails. Run it again after each round of comments.
+
+### 6. Hand it over
 
 End your turn with a short message containing:
 
@@ -162,7 +193,8 @@ When the user says they've commented (or asks you to check the canvas):
 2. Answer each comment **on the canvas**: a text element right beside it, in blue (`#1971c2`), starting with `Re:`. Don't use `↳`; the headless renderer draws it as a tofu box in the PNGs. Keep it to one or two lines and point to PLAN.md for anything longer. Don't delete or move the user's notes.
 3. Re-take `00-overview.png` and the screenshots of every frame you or the user touched, so the PNGs in the plan show their notes and your replies. If the plan was published as an issue or PR, re-push the PNGs to the asset branch as well. If a comment changes the plan, update the diagrams, re-export the PNGs, and update PLAN.md. Record it in PLAN.md's **Feedback log**: the comment, your response, and what changed.
 4. Re-export `scene.excalidraw` so the new baseline includes their notes and your replies, and the next diff only shows fresh comments.
-5. Summarize in chat what you changed and what still needs their decision.
+5. Run `scripts/check_plan.py $P` again.
+6. Summarize in chat what you changed and what still needs their decision.
 
 Treat edits to your elements as feedback too. A box the user dragged into another zone, or a label they retyped, is a statement about the design. Acknowledge it, and either adopt it or explain why not.
 

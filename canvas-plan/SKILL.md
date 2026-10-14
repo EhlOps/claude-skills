@@ -159,7 +159,7 @@ When the user says they've commented (or asks you to check the canvas):
    python3 <this-skill>/scripts/find_comments.py $P/diagrams/scene.excalidraw /tmp/canvas-current.excalidraw
    ```
    The script lists new elements (with their text, frame, and what they point at or sit nearest) and any of your elements the user edited, moved or deleted. Screenshot the affected frames as well, because placement sometimes carries meaning the script can't capture.
-2. Answer each comment **on the canvas**: a text element right beside it, in blue (`#1971c2`), starting with `↳`. Keep it to one or two lines and point to PLAN.md for anything longer. Don't delete or move the user's notes.
+2. Answer each comment **on the canvas**: a text element right beside it, in blue (`#1971c2`), starting with `Re:`. Don't use `↳`; the headless renderer draws it as a tofu box in the PNGs. Keep it to one or two lines and point to PLAN.md for anything longer. Don't delete or move the user's notes.
 3. Re-take `00-overview.png` and the screenshots of every frame you or the user touched, so the PNGs in the plan show their notes and your replies. If the plan was published as an issue or PR, re-push the PNGs to the asset branch as well. If a comment changes the plan, update the diagrams, re-export the PNGs, and update PLAN.md. Record it in PLAN.md's **Feedback log**: the comment, your response, and what changed.
 4. Re-export `scene.excalidraw` so the new baseline includes their notes and your replies, and the next diff only shows fresh comments.
 5. Summarize in chat what you changed and what still needs their decision.
